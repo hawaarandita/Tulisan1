@@ -1,0 +1,108 @@
+---
+title: "Analisis Klaster"
+author: "Hawa Dwi Nur Arandita"
+date: "5/12/2022"
+output: html_document
+editor_options: 
+  chunk_output_type: inline
+---
+
+#Siapkan library yang dibutuhkan.
+
+```{r echo=TRUE, message=FALSE, warning=FALSE}
+library(knitr)
+library(REdaS)
+library(factoextra) 
+library(clValid)
+library(tidyverse)
+library(cluster)
+library(readxl)
+```
+
+#Import data yang akan diolah dan buat summary-nya.
+```{r}
+data <- read_excel("D:/POLSTAT STIS/DATMIN.xlsx")
+data2 <- data[,-1]
+kable(head(data2))
+summary(data2)
+```
+
+# Lakukan standarisasi karena satuan setiap variabel berbeda.
+
+```{r}
+str(data2)
+data3 <- scale(data2)
+```
+
+
+# Periksa ada tidaknya multikolinieritas.
+
+```{r}
+matrikskorelasi <- cor(data3, method = "pearson")
+
+# Membuat Correlogram 
+library(corrplot)
+corrplot(matrikskorelasi,
+         order = "hclust",
+         tl.col = "maroon",
+         tl.srt = 45,
+         method="circle")
+
+bart_spher(data3)
+```
+
+# Validasi jumlah kluster terbaik
+
+```{r}
+library(factoextra)
+library(NbClust)
+
+# Elbow method
+fviz_nbclust(data3, kmeans, method = "wss") +
+  geom_vline(xintercept = 6, linetype = 3) + # add line for better visualisation
+  labs(subtitle = "Elbow method") # add subtitle
+```
+
+```{r}
+
+intern <- clValid(data3, 2:6, clMethods = c("hierarchical","kmeans"), validation = "internal")
+summary(intern)
+
+stab <- clValid(data3, 2:6, clMethods = c("hierarchical","kmeans"), validation = "stability")
+summary(stab)
+optimalScores(stab)
+```
+
+# Agglomerative Coefficient, digunakan untuk melihat metode hierarki terbaik
+
+```{r}
+m <- c("single","complete","ward", "average")
+names(m) <- c("single","complete","ward", "average") 
+ac <- function(x){
+  agnes(data3,method=x)$ac
+}
+map_dbl(m,ac)
+```
+
+
+# Dendogram yang terbentuk, sesuaikan k dengan jumlah klaster terbaik yang terbukti. 
+
+```{r}
+data3.hcc <- data3 %>%      
+  dist(method = "euclidean") %>% 
+  hclust(method = "ward.D2")
+
+fviz_dend(data3.hcc, k = 2, 
+          cex = 0.6, palette = "jco", 
+          rect = TRUE, rect_border = "jco", rect_fill = TRUE,
+          main = "Cluster Dendogram (Ward's Method)")
+```
+
+# Deskripsi Statistik tiap Klaster
+
+```{r}
+clust1 <- data2[c(2,20,31,11,16,17,4,14,19,18,29,25,22,3,6,8,9,5,21,23,7,24,30,26,32,27,28,34,10,33 ),]
+summary(clust1)
+clust2 <- data2[c(1,15,12,13),]
+summary(clust2)
+```
